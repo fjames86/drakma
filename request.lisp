@@ -603,7 +603,9 @@ Any encodings in Transfer-Encoding, such as chunking, are always performed."
                          ;; don't attach SSL to existing streams
                          (not stream))
                 #+:lispworks
-                (comm:attach-ssl http-stream :ssl-side :client)
+                (comm:attach-ssl http-stream
+                                 :ssl-side :client
+                                 :tlsext-host-name (puri:uri-host uri))
                 #-:lispworks
                 (setq http-stream (make-ssl-stream http-stream
 				       :hostname (puri:uri-host uri)
@@ -636,7 +638,9 @@ Any encodings in Transfer-Encoding, such as chunking, are always performed."
                 ;; turn on SSL, and then we can transmit
                 (read-line* http-stream)
                 #+:lispworks
-                (comm:attach-ssl raw-http-stream :ssl-side :client)
+                (comm:attach-ssl raw-http-stream
+                                 :ssl-side :client
+                                 :tlsext-host-name (puri:uri-host uri))
                 #-:lispworks
                 (setq http-stream (wrap-stream
                                    (make-ssl-stream raw-http-stream
@@ -793,7 +797,8 @@ Any encodings in Transfer-Encoding, such as chunking, are always performed."
                                  (when auto-referer
                                    (setq additional-headers (set-referer uri additional-headers)))
                                  (let* ((location (header-value :location headers))
-                                        (new-uri (puri:merge-uris location uri))
+                                        (new-uri (let (puri:*strict-parse*)
+                                                   (puri:merge-uris location uri)))
                                         ;; can we re-use the stream?
                                         (old-server-p (and (string= (puri:uri-host new-uri)
                                                                     (puri:uri-host uri))
