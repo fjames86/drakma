@@ -295,6 +295,16 @@ which are not meant as separators."
          (setq cookie-start (1+ end-pos))
          (go next-cookie))))))
 
+#+(and (not lispworks) (or :allegro-cl-express (not :allegro)) (not :mocl-ssl) (not :drakma-no-ssl) win32)
+(progn
+  (defclass schannel-stream (schannel::client-stream)
+    ())
+  (defmethod close ((stream schannel-stream) &key abort)
+    ;; close the base stream first
+    (let ((s (schannel::stream-base-stream stream)))
+      (close s :abort abort))    
+    (call-next-method)))
+
 #-:lispworks
 (defun make-ssl-stream (http-stream &key certificate key certificate-password verify (max-depth 10) ca-file ca-directory
                                          hostname)
@@ -325,7 +335,7 @@ which are not meant as separators."
     (when (or ca-file ca-directory)
       (warn ":max-depth, :ca-file and :ca-directory arguments not available on this platform"))
     (rt:start-ssl http-stream :verify verify))
-  #+(and (or :allegro-cl-express (not :allegro)) (not :mocl-ssl) (not :drakma-no-ssl))
+  #+(and (or :allegro-cl-express (not :allegro)) (not :mocl-ssl) (not :drakma-no-ssl) (not win32))
   (let ((s http-stream)
         (ctx (cl+ssl:make-context :verify-depth max-depth
                                   :verify-mode cl+ssl:+ssl-verify-none+
@@ -345,6 +355,10 @@ which are not meant as separators."
        :certificate certificate
        :key key
        :password certificate-password)))
+  #+(and (or :allegro-cl-express (not :allegro)) (not :mocl-ssl) (not :drakma-no-ssl) win32)
+  (change-class (schannel:make-client-stream http-stream hostname
+					     :ignore-certificates-p (not verify))
+		'schannel-stream)
   #+:drakma-no-ssl
   (error "SSL not supported. Remove :drakma-no-ssl from *features* to enable SSL"))
 

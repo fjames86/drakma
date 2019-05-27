@@ -57,7 +57,8 @@
                :cl-ppcre
                #-:drakma-no-chipz :chipz
                #-:lispworks :usocket
-               #-(or :lispworks (and :allegro (not :allegro-cl-express)) :mocl-ssl :drakma-no-ssl) :cl+ssl)
+               #-(or :lispworks (and :allegro (not :allegro-cl-express)) :mocl-ssl :drakma-no-ssl win32 windows) :cl+ssl
+	       #+(and (not :lispworks) (or :win32 :windows)) :fsocket :dragons :schannel)
   :perform (test-op (o s)
                     (asdf:load-system :drakma-test)
                     (asdf:perform 'asdf:test-op :drakma-test)))

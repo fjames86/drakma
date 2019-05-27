@@ -230,7 +230,7 @@ headers of the chunked stream \(if any) as a second value."
                               #+(and :lispworks (not :lw-does-not-have-write-timeout))
                               (write-timeout 20 write-timeout-provided-p)
                               #+:openmcl
-                              deadline
+			      deadline
                               &aux (unparsed-uri (if (stringp uri) (copy-seq uri) (puri:copy-uri uri))))
   "Sends a HTTP request to a web server and returns its reply.  URI
 is where the request is sent to, and it is either a string denoting a
@@ -562,7 +562,15 @@ Any encodings in Transfer-Encoding, such as chunking, are always performed."
                                                           #-:lw-does-not-have-write-timeout
                                                           write-timeout
                                                           :errorp t)
-                                    #-:lispworks
+                                    #+(and (not :lispworks) (or :win32 :windows))
+				    (fsocket::make-tcp-stream
+				     (let ((fd (fsocket:open-socket :type :stream)))
+				       ;;; TODO - need to close fd at end
+				       (fsocket:socket-connect fd (fsocket:sockaddr-in (first (dns:get-host-by-name host)) port))
+				       (when connection-timeout
+					 (setf (fsocket:socket-option fd :socket :rcvtimeo) (floor (* connection-timeout 1000))))
+				       fd))
+				    #+(and (not :lispworks) (not (or :win32 :windows)))
                                     (usocket:socket-stream
                                      (usocket:socket-connect host port
                                                              :element-type 'octet
@@ -598,14 +606,14 @@ Any encodings in Transfer-Encoding, such as chunking, are always performed."
                 (comm:attach-ssl http-stream :ssl-side :client)
                 #-:lispworks
                 (setq http-stream (make-ssl-stream http-stream
-                                                   :hostname (puri:uri-host uri)
-                                                   :certificate certificate
-                                                   :key key
-                                                   :certificate-password certificate-password
-                                                   :verify verify
-                                                   :max-depth max-depth
-                                                   :ca-file ca-file
-                                                   :ca-directory ca-directory)))
+				       :hostname (puri:uri-host uri)
+				       :certificate certificate
+				       :key key
+				       :certificate-password certificate-password
+				       :verify verify
+				       :max-depth max-depth
+				       :ca-file ca-file
+				       :ca-directory ca-directory)))
               (cond (stream
                      (setf (flexi-stream-element-type http-stream)
                            #+:lispworks 'lw:simple-char #-:lispworks 'character
