@@ -563,12 +563,12 @@ Any encodings in Transfer-Encoding, such as chunking, are always performed."
                                                           write-timeout
                                                           :errorp t)
                                     #+(and (not :lispworks) (or :win32 :windows))
-				    (fsocket::make-tcp-stream
+				    (fsocket:make-tcp-stream
 				     (let ((fd (fsocket:open-socket :type :stream)))
-				       ;;; TODO - need to close fd at end
 				       (fsocket:socket-connect fd (fsocket:sockaddr-in (first (dns:get-host-by-name host)) port))
 				       (when connection-timeout
 					 (setf (fsocket:socket-option fd :socket :rcvtimeo) (floor (* connection-timeout 1000))))
+				       (setf (fsocket:socket-option fd :tcp :nodelay) t)
 				       fd))
 				    #+(and (not :lispworks) (not (or :win32 :windows)))
                                     (usocket:socket-stream
