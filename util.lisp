@@ -295,15 +295,17 @@ which are not meant as separators."
          (setq cookie-start (1+ end-pos))
          (go next-cookie))))))
 
+;; Schannel does not close base stream by default so extend class with close method 
 #+(and (not lispworks) (or :allegro-cl-express (not :allegro)) (not :mocl-ssl) (not :drakma-no-ssl) win32)
 (progn
-  (defclass schannel-stream (schannel::client-stream)
+  (defclass schannel-stream (schannel:client-stream)
     ())
   (defmethod close ((stream schannel-stream) &key abort)
-    ;; close the base stream first
+    ;; call base close method first
+    (call-next-method)
+    ;; then close base stream 
     (let ((s (schannel::stream-base-stream stream)))
-      (close s :abort abort))    
-    (call-next-method)))
+      (ignore-errors (close s :abort abort)))))
 
 #-:lispworks
 (defun make-ssl-stream (http-stream &key certificate key certificate-password verify (max-depth 10) ca-file ca-directory
