@@ -40,8 +40,10 @@
 
 (defsystem :drakma
   :description "Full-featured http/https client based on usocket"
+  :author "Dr. Edi Weitz"
+  :license "BSD"
   :serial t
-  :version "2.0.5"
+  :version "2.0.7"
   :components ((:file "packages")
                (:file "specials")
                (:file "conditions")

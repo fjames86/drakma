@@ -100,6 +100,8 @@ body using the boundary BOUNDARY."
                  (setf (flexi-stream-external-format stream) external-format-out)
                  (format stream "~A" value)
                  (setf (flexi-stream-external-format stream) +latin-1+))
+                ((null value)
+                 (crlf))
                 ((and (listp value)
                       (first value)
                       (not (stringp (first value))))
@@ -134,13 +136,18 @@ body using the boundary BOUNDARY."
   (declare (stream stream))
   "Helper function to read from stream into a buffer of element-type, which is returned."
   (let ((buffer (make-array +buffer-size+ :element-type element-type))
-        (result (make-array 0 :element-type element-type :adjustable t)))
-        (loop for index = 0 then (+ index pos)
-           for pos = (read-sequence buffer stream)
-           do (adjust-array result (+ index pos))
-             (replace result buffer :start1 index :end2 pos)
-           while (= pos +buffer-size+))
-        result))
+        (result (make-array +buffer-size+ :element-type element-type :adjustable t))
+        (result-length +buffer-size+))
+    (loop for index = 0 then size
+          for pos = (read-sequence buffer stream)
+          for size = (+ index pos)
+          do
+          (when (>= size result-length)
+            (adjust-array result (setf result-length (* result-length 2))))
+          (replace result buffer :start1 index :end2 pos)
+          while (= pos +buffer-size+)
+          finally (adjust-array result size))
+    result))
 
 (defun read-body (stream headers textp &key (decode-content t))
   "Reads the message body from the HTTP stream STREAM using the
@@ -605,7 +612,10 @@ Any encodings in Transfer-Encoding, such as chunking, are always performed."
                 #+:lispworks
                 (comm:attach-ssl http-stream
                                  :ssl-side :client
-                                 :tlsext-host-name (puri:uri-host uri))
+                                 #-(or lispworks4 lispworks5 lispworks6)
+                                 :tlsext-host-name
+                                 #-(or lispworks4 lispworks5 lispworks6)
+                                 (puri:uri-host uri))
                 #-:lispworks
                 (setq http-stream (make-ssl-stream http-stream
 				       :hostname (puri:uri-host uri)
@@ -640,7 +650,10 @@ Any encodings in Transfer-Encoding, such as chunking, are always performed."
                 #+:lispworks
                 (comm:attach-ssl raw-http-stream
                                  :ssl-side :client
-                                 :tlsext-host-name (puri:uri-host uri))
+                                 #-(or lispworks4 lispworks5 lispworks6)
+                                 :tlsext-host-name
+                                 #-(or lispworks4 lispworks5 lispworks6)
+                                 (puri:uri-host uri))
                 #-:lispworks
                 (setq http-stream (wrap-stream
                                    (make-ssl-stream raw-http-stream
